@@ -1,59 +1,58 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+## User Balances — SPA (Vue 3) + Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Краткая инструкция по запуску и проверке проекта (бекенд Laravel + SPA на Vue 3).
 
-## About Laravel
+### Требования
+- Docker + Docker Compose
+- Node.js + npm (для фронтенда / Vite)
+- PHP ≥ 8.2 (для локального запуска тестов)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Быстрый старт (Docker)
+1. Установить npm-зависимости (один раз):
+   ```bash
+   cd src
+   npm install
+   ```
+2. Поднять контейнеры (Laravel + Postgres + Nginx + PHP-FPM):
+   ```bash
+   docker compose up -d
+   ```
+3. Выполнить миграции и сиды внутри php-контейнера:
+   ```bash
+   docker compose exec app php artisan migrate --seed
+   ```
+4. Запустить Vite dev server (HMR) для SPA:
+   ```bash
+   cd src
+   npm run dev
+   ```
+5. Открыть приложение в браузере на домене/порту, настроенном в docker/nginx (по умолчанию http://localhost:8080 для Laravel через Nginx; Vite dev сервер — http://localhost:5173).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Среда и переменные
+- Основные переменные в `.env` (см. `.env.example`):
+  - `FRONTEND_URLS=http://localhost:5173` — список origin для CORS/Sanctum (через запятую)
+  - `SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5173` — stateful-домены для cookie-based SPA auth
+  - `SESSION_DOMAIN=localhost` (или ваш домен)
+  - `SPA_POLL_INTERVAL_SEC=10` — интервал автообновления данных на SPA (попадает в `<meta name="spa-poll-interval">`)
+- По умолчанию используется Postgres (см. `docker-compose.yml`), Laravel слушает через Nginx на `8080`.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Тестовые пользователи (сиды)
+- `alice@example.com / password`
+- `bob@example.com / password`
 
-## Learning Laravel
+### Проверка
+1. API/бекенд: после `migrate --seed` можно выполнить фиче-тесты (нужен PHP ≥ 8.2):
+   ```bash
+   cd src
+   ./vendor/bin/phpunit --testsuite=Feature
+   ```
+2. SPA: 
+   - Перейти на `/login`, залогиниться тестовыми пользователями.
+   - Проверить главную страницу (баланс, последние операции, автообновление с интервалом `SPA_POLL_INTERVAL_SEC`).
+   - Проверить историю (`/history`): поиск по описанию, сортировка по дате, пагинация.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Полезные команды
+- Запуск Vite: `npm run dev`
+- Сборка фронтенда: `npm run build`
+- Предпросмотр сборки: `npm run preview`
+- Типы: `npm run type-check`

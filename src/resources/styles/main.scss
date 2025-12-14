@@ -1,0 +1,8 @@
+// Global styles entry for Vite
+// Import Bootstrap 5 SCSS (variables can be customized before this import if needed)
+@use "bootstrap/scss/bootstrap" as *;
+
+// Place for custom project styles
+body {
+  background-color: #f8f9fa;
+}

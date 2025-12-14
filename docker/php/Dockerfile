@@ -14,7 +14,8 @@ RUN apk add --no-cache \
     zip unzip \
     bash \
     shadow \
-    postgresql-client postgresql-dev build-base
+    postgresql-client postgresql-dev build-base \
+    nodejs npm
 
 # PHP extensions
 RUN docker-php-ext-configure gd \
@@ -40,5 +41,13 @@ WORKDIR /var/www/html
 
 # Fix www-data to match common host uid/gid 1000 for permissions
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data || true
+
+## Runtime asset build for Vite (after volume mount)
+# Copy entrypoint that will run `npm install` and `npm run build` if a frontend is present
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown www-data:www-data /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 USER www-data
