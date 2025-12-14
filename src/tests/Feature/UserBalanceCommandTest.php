@@ -2,11 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationCommand;
+use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationHandler;
+use App\Domain\Balance\Exception\NegativeBalanceException;
+use App\Domain\Balance\Service\BalanceCalculator;
+use App\Infrastructure\Persistence\EloquentOperationRepository;
+use App\Infrastructure\Persistence\EloquentUserRepository;
+use App\Infrastructure\Persistence\LaravelTransactionManager;
 use App\Jobs\ProcessBalanceOperation;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Queue;
-use RuntimeException;
+use Symfony\Component\Console\Command\Command as CommandAlias;
 use Tests\TestCase;
 
 class UserBalanceCommandTest extends TestCase
@@ -21,12 +28,12 @@ class UserBalanceCommandTest extends TestCase
             'email' => $user->email,
             'amount' => '150.50',
             'description' => 'Deposit',
-        ])->assertExitCode(Command::SUCCESS);
+        ])->assertExitCode(CommandAlias::SUCCESS);
 
         Queue::assertPushed(ProcessBalanceOperation::class, function (ProcessBalanceOperation $job) use ($user): bool {
-            $this->assertSame($user->id, $job->userId);
-            $this->assertSame('150.50', $job->amount);
-            $this->assertSame('Deposit', $job->description);
+            $this->assertSame($user->id, $job->command->userId);
+            $this->assertSame('150.50', $job->command->amount);
+            $this->assertSame('Deposit', $job->command->description);
 
             app()->call([$job, 'handle']);
 
@@ -75,12 +82,12 @@ class UserBalanceCommandTest extends TestCase
             'email' => $user->email,
             'amount' => '-20.25',
             'description' => 'Payment',
-        ])->assertExitCode(Command::SUCCESS);
+        ])->assertExitCode(CommandAlias::SUCCESS);
 
         Queue::assertPushed(ProcessBalanceOperation::class, function (ProcessBalanceOperation $job) use ($user): bool {
-            $this->assertSame($user->id, $job->userId);
-            $this->assertSame('-20.25', $job->amount);
-            $this->assertSame('Payment', $job->description);
+            $this->assertSame($user->id, $job->command->userId);
+            $this->assertSame('-20.25', $job->command->amount);
+            $this->assertSame('Payment', $job->command->description);
 
             app()->call([$job, 'handle']);
 
@@ -100,10 +107,18 @@ class UserBalanceCommandTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $job = new ProcessBalanceOperation($user->id, -10, 'Attempt');
+        $job = new ProcessBalanceOperation(
+            new ApplyBalanceOperationCommand($user->id, -10, 'Attempt'),
+            new ApplyBalanceOperationHandler(
+                new EloquentUserRepository(),
+                new EloquentOperationRepository(),
+                new BalanceCalculator(),
+                new LaravelTransactionManager()
+            )
+        );
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('negative');
+        $this->expectException(NegativeBalanceException::class);
+        $this->expectExceptionMessage('Operation aborted: resulting balance would be negative.');
 
         app()->call([$job, 'handle']);
 

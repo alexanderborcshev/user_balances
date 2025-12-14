@@ -19,7 +19,7 @@ class ProcessBalanceOperation implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        private readonly ApplyBalanceOperationCommand $command,
+        public readonly ApplyBalanceOperationCommand $command,
         private readonly ApplyBalanceOperationHandler $handler
     )
     {

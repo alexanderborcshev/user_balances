@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\Console\Command\Command as CommandAlias;
 use Tests\TestCase;
 
 class AddUserCommandTest extends TestCase
@@ -15,7 +15,7 @@ class AddUserCommandTest extends TestCase
             'name' => 'Alice Example',
             'email' => 'alice@example.com',
             'password' => 'secret123',
-        ])->assertExitCode(Command::SUCCESS);
+        ])->assertExitCode(CommandAlias::SUCCESS);
 
         $user = User::where('email', 'alice@example.com')->first();
 
@@ -32,6 +32,6 @@ class AddUserCommandTest extends TestCase
             'name' => 'Another User',
             'email' => 'taken@example.com',
             'password' => 'secret123',
-        ])->assertExitCode(Command::FAILURE);
+        ])->assertExitCode(CommandAlias::FAILURE);
     }
 }
