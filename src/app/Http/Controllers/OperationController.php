@@ -2,49 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OperationLatestRequest;
+use App\Http\Requests\OperationRequest;
+use App\Http\Resources\OperationsLatestResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class OperationController extends Controller
 {
-    public function index(Request $request): LengthAwarePaginator
+    public function index(OperationRequest $request): LengthAwarePaginator
     {
-        $validated = $request->validate([
-            'page' => ['integer', 'min:1'],
-            'per_page' => ['integer', 'min:1', 'max:100'],
-            'sort' => ['in:date'],
-            'dir' => ['in:asc,desc'],
-            'q' => ['string'],
-        ]);
+        $validated = $request->validated();
 
-        $dir = $validated['dir'] ?? 'desc';
-        $perPage = $validated['per_page'] ?? 15;
         $query = $request->user()
             ->operations()
             ->when(! empty($validated['q']), function ($q) use ($validated) {
                 $search = mb_strtolower($validated['q']);
-                $q->whereRaw('LOWER(description) LIKE ?', ["%{$search}%"]);
+                $q->whereRaw('LOWER(description) LIKE ?', ["%$search%"]);
             })
-            ->orderBy('created_at', $dir);
+            ->orderBy('created_at', $validated['dir']);
 
-        return $query->paginate($perPage);
+        return $query->paginate($validated['per_page']);
     }
 
-    public function latest(Request $request): JsonResponse
+    public function latest(OperationLatestRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'limit' => ['integer', 'min:1', 'max:50'],
-        ]);
-
-        $limit = $validated['limit'] ?? 5;
+        $validated = $request->validated();
 
         $operations = $request->user()
             ->operations()
             ->latest('created_at')
-            ->limit($limit)
+            ->limit($validated['limit'])
             ->get();
-
-        return response()->json($operations);
+        OperationsLatestResource::withoutWrapping();
+        return OperationsLatestResource::collection($operations)->response();
     }
 }

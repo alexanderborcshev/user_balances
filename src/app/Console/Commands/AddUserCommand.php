@@ -2,9 +2,13 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Application\User\CreateUser\CreateUserCommand;
+use App\Application\User\CreateUser\CreateUserHandler;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AddUserCommand extends Command
 {
@@ -18,10 +22,50 @@ class AddUserCommand extends Command
      */
     protected $description = 'Create a new user';
 
+    public function __construct(private readonly CreateUserHandler $handler)
+    {
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
+     * @throws Exception
      */
     public function handle(): int
+    {
+        try {
+            $validated = $this->validateInput();
+
+            if ($validated === null) {
+                return self::FAILURE;
+            }
+        } catch (Throwable $exception) {
+            $this->error($exception->getMessage());
+            return self::FAILURE;
+        }
+
+        $command = new CreateUserCommand(
+            $validated['name'],
+            $validated['email'],
+            $validated['password']
+        );
+
+        try {
+            $user = $this->handler->handle($command);
+
+            $this->info("User " . $user->getEmail() . " created (id: " . $user->getId() . ").");
+
+            return self::SUCCESS;
+        } catch (Throwable $exception) {
+            $this->error($exception->getMessage());
+            return self::FAILURE;
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function validateInput(): ?array
     {
         $validator = Validator::make([
             'name' => $this->argument('name'),
@@ -38,15 +82,9 @@ class AddUserCommand extends Command
                 $this->error($error);
             }
 
-            return self::FAILURE;
+            return null;
         }
 
-        $data = $validator->validated();
-
-        $user = User::create($data);
-
-        $this->info("User {$user->email} created (id: {$user->id}).");
-
-        return self::SUCCESS;
+        return $validator->validated();
     }
 }

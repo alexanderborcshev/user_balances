@@ -2,11 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationCommand;
+use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationHandler;
+use App\Domain\Balance\Service\BalanceCalculator;
+use App\Domain\Shared\ValueObject\Money;
 use App\Jobs\ProcessBalanceOperation;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class UserBalanceCommand extends Command
 {
@@ -20,44 +25,54 @@ class UserBalanceCommand extends Command
      */
     protected $description = 'Apply a balance operation to a user';
 
-    /**
-     * Execute the console command.
-     * @throws ValidationException
-     */
+    public function __construct(private readonly ApplyBalanceOperationHandler $handler)
+    {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
-        $validated = $this->validateInput();
+        try {
+            $validated = $this->validateInput();
 
-        if ($validated === null) {
+            if ($validated === null) {
+                return self::FAILURE;
+            }
+        } catch (Throwable $exception) {
+            $this->error($exception->getMessage());
             return self::FAILURE;
         }
 
         $user = User::where('email', $validated['email'])->firstOrFail();
 
-        $deltaAmount = $this->normalizeAmount($validated['amount']);
-        if (! $this->guardNonZeroAmount($deltaAmount)) {
+        $command = new ApplyBalanceOperationCommand(
+            $user->id,
+            $validated['amount'],
+            $validated['description']
+        );
+
+        try {
+            $deltaAmount = Money::fromNumeric($command->amount);
+            $currentBalance = Money::fromNumeric($user->balance);
+            $balanceCalculator = new BalanceCalculator();
+            $newBalance = $balanceCalculator->assertCanApply($currentBalance, $deltaAmount);
+        } catch (Throwable $exception) {
+            $this->error($exception->getMessage());
             return self::FAILURE;
         }
 
-        $currentBalance = $this->normalizeAmount($user->balance);
-        $newBalance = $this->normalizeAmount($currentBalance + $deltaAmount);
-
-        if ($newBalance < 0) {
-            $formattedCurrent = $this->formatAmount($currentBalance);
-            $formattedDelta = $this->formatAmount($deltaAmount);
-
-            $this->error("Operation aborted: resulting balance would be negative (current $formattedCurrent, change $formattedDelta).");
+        if ($newBalance->isNegative()) {
+            $this->error("Operation aborted: resulting balance would be negative");
             return self::FAILURE;
         }
 
         ProcessBalanceOperation::dispatch(
-            $user->id,
-            $this->formatAmount($deltaAmount),
-            $validated['description']
+            $command,
+            $this->handler
         );
 
-        $this->info("Operation queued for $user->email: {$this->formatAmount($deltaAmount)}");
-        $this->info("Expected balance after processing: {$this->formatAmount($newBalance)}");
+        $this->info("Operation queued for $user->email: {$deltaAmount->format()}");
+        $this->info("Expected balance after processing: {$newBalance->format()}");
 
         return self::SUCCESS;
     }
@@ -88,23 +103,4 @@ class UserBalanceCommand extends Command
         return $validator->validated();
     }
 
-    private function guardNonZeroAmount(float $deltaAmount): bool
-    {
-        if ($deltaAmount === 0.0) {
-            $this->error('Amount must not be zero.');
-            return false;
-        }
-
-        return true;
-    }
-
-    private function normalizeAmount(float|string $value): float
-    {
-        return (float) number_format((float) $value, 2, '.', '');
-    }
-
-    private function formatAmount(float $value): string
-    {
-        return number_format($value, 2, '.', '');
-    }
 }
