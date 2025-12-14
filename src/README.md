@@ -5,7 +5,7 @@
 ### Требования
 - Docker + Docker Compose
 - Node.js + npm (для фронтенда / Vite)
-- PHP ≥ 8.2 (для локального запуска тестов)
+- PHP ≥ 8.4 (для локального запуска тестов)
 
 ### Быстрый старт (Docker)
 1. Установить npm-зависимости (один раз):
@@ -56,3 +56,7 @@
 - Сборка фронтенда: `npm run build`
 - Предпросмотр сборки: `npm run preview`
 - Типы: `npm run type-check`
+
+### Очереди
+- Балансовые операции ставятся в очередь командой `user:balance` и обрабатываются job `ProcessBalanceOperation`.
+- Запуск воркера: `php artisan queue:work` (или внутри контейнера `docker compose exec app php artisan queue:work`).

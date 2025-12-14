@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -55,6 +54,8 @@ class User extends Authenticatable
 
     public function getBalanceAttribute(): string
     {
-        return $this->operations()->sum('amount');
+        $balance = $this->operations()->sum('amount');
+
+        return number_format((float) $balance, 2, '.', '');
     }
 }
