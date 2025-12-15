@@ -4,8 +4,12 @@ namespace App\Console\Commands;
 
 use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationCommand;
 use App\Application\Balance\ApplyBalanceOperation\ApplyBalanceOperationHandler;
+use App\Domain\Balance\OperationRepository;
 use App\Domain\Balance\Service\BalanceCalculator;
 use App\Domain\Shared\ValueObject\Money;
+use App\Domain\User\UserRepository;
+use App\Infrastructure\Persistence\EloquentOperationRepository;
+use App\Infrastructure\Persistence\EloquentUserRepository;
 use App\Jobs\ProcessBalanceOperation;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -25,7 +29,11 @@ class UserBalanceCommand extends Command
      */
     protected $description = 'Apply a balance operation to a user';
 
-    public function __construct(private readonly ApplyBalanceOperationHandler $handler)
+    public function __construct(
+        private readonly ApplyBalanceOperationHandler $handler,
+        private readonly UserRepository $userRepository,
+        private readonly OperationRepository $operationRepository,
+    )
     {
         parent::__construct();
     }
@@ -38,22 +46,26 @@ class UserBalanceCommand extends Command
             if ($validated === null) {
                 return self::FAILURE;
             }
+
+            $user = $this->userRepository->findByEmail($validated['email']);
+            if ($user === null) {
+                return self::FAILURE;
+            }
+
         } catch (Throwable $exception) {
             $this->error($exception->getMessage());
             return self::FAILURE;
         }
 
-        $user = User::where('email', $validated['email'])->firstOrFail();
-
         $command = new ApplyBalanceOperationCommand(
-            $user->id,
+            $user->getId(),
             $validated['amount'],
             $validated['description']
         );
 
         try {
             $deltaAmount = Money::fromNumeric($command->amount);
-            $currentBalance = Money::fromNumeric($user->balance);
+            $currentBalance = $this->operationRepository->sumByUserId($user->getId());
             $balanceCalculator = new BalanceCalculator();
             $newBalance = $balanceCalculator->assertCanApply($currentBalance, $deltaAmount);
         } catch (Throwable $exception) {
@@ -71,7 +83,7 @@ class UserBalanceCommand extends Command
             $this->handler
         );
 
-        $this->info("Operation queued for $user->email: {$deltaAmount->format()}");
+        $this->info("Operation queued for {$user->getEmail()}: {$deltaAmount->format()}");
         $this->info("Expected balance after processing: {$newBalance->format()}");
 
         return self::SUCCESS;

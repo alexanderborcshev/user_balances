@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
-class AddUserCommand extends Command
+class UserAddCommand extends Command
 {
     /**
      * The name and signature of the console command.

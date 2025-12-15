@@ -1,6 +1,6 @@
 <?php
 
-use App\Console\Commands\AddUserCommand;
+use App\Console\Commands\UserAddCommand;
 use App\Console\Commands\UserBalanceCommand;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
-        AddUserCommand::class,
+        UserAddCommand::class,
         UserBalanceCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
