@@ -62,7 +62,7 @@ class EloquentOperationRepository implements OperationRepository
             $search = mb_strtolower($search);
             $q->whereRaw('LOWER(description) LIKE ?', ["%$search%"]);
         })
-        ->orderBy('created_at', $orderDir);
+        ->orderBy($orderBy, $orderDir);
 
         return $query->paginate($per_page);
     }
