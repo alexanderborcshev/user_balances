@@ -33,8 +33,7 @@ class UserBalanceCommand extends Command
         private readonly ApplyBalanceOperationHandler $handler,
         private readonly UserRepository $userRepository,
         private readonly OperationRepository $operationRepository,
-    )
-    {
+    ) {
         parent::__construct();
     }
 

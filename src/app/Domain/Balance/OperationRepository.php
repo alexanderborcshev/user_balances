@@ -10,4 +10,11 @@ interface OperationRepository
     public function sumByUserId(int $userId): Money;
 
     public function store(BalanceOperation $operation): void;
+
+    public function getListUserId(
+        int $userId,
+        int $limit,
+        string $orderBy = 'created_at',
+        string $orderDir = 'desc'
+    ): array;
 }

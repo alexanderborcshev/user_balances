@@ -31,4 +31,12 @@ readonly class BalanceOperation
     {
         return $this->description;
     }
+
+    public function toArray(): array {
+        return [
+            'userId' => $this->getUserId(),
+            'amount' => $this->getAmount()->format(),
+            'description' => $this->getDescription(),
+        ];
+    }
 }
