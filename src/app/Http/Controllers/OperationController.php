@@ -20,21 +20,18 @@ class OperationController extends Controller
     {
         $validated = $request->validated();
 
-        $query = $request->user()
-            ->operations()
-            ->when(! empty($validated['q']), function ($q) use ($validated) {
-                $search = mb_strtolower($validated['q']);
-                $q->whereRaw('LOWER(description) LIKE ?', ["%$search%"]);
-            })
-            ->orderBy('created_at', $validated['dir']);
-
-        return $query->paginate($validated['per_page']);
+        return $this->operationRepository->getListByUserIdWithPagination(
+            userId: $request->user()->id,
+            per_page:  (int) $validated['per_page'],
+            orderDir: $validated['dir'],
+            search: $validated['q'] ?? '',
+        );
     }
 
     public function latest(OperationLatestRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $operations = $this->operationRepository->getListUserId(
+        $operations = $this->operationRepository->getListByUserId(
             $request->user()->id,
             (int) $validated['limit']
         );

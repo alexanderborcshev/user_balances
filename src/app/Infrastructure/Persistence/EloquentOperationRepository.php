@@ -6,6 +6,7 @@ use App\Domain\Balance\Entity\BalanceOperation;
 use App\Domain\Balance\OperationRepository;
 use App\Domain\Shared\ValueObject\Money;
 use App\Models\Operation;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 
 class EloquentOperationRepository implements OperationRepository
@@ -26,7 +27,7 @@ class EloquentOperationRepository implements OperationRepository
         ]);
     }
 
-    public function getListUserId(
+    public function getListByUserId(
         int $userId,
         int $limit,
         string $orderBy = 'created_at',
@@ -36,7 +37,9 @@ class EloquentOperationRepository implements OperationRepository
         $operations = Operation::where('user_id', $userId)
             ->orderBy($orderBy, $orderDir)
             ->limit($limit)
-            ->get()->toArray();
+            ->get()
+            ->toArray();
+
         return array_map(static fn ($operation) =>
             new BalanceOperation(
                 $operation['user_id'],
@@ -44,5 +47,34 @@ class EloquentOperationRepository implements OperationRepository
                 $operation['description'],
             ),
             $operations);
+    }
+
+    public function getListByUserIdWithPagination(
+        int $userId,
+        int $per_page = 10,
+        string $orderBy = 'created_at',
+        string $orderDir = 'desc',
+        string $search = ''
+    ): LengthAwarePaginator
+    {
+        $query = Operation::where('user_id', $userId)
+        ->when(! empty($search), function ($q) use ($search) {
+            $search = mb_strtolower($search);
+            $q->whereRaw('LOWER(description) LIKE ?', ["%$search%"]);
+        })
+        ->orderBy('created_at', $orderDir);
+
+        return $query->paginate($per_page);
+    }
+
+    private function getListQueryByUserId(
+        int $userId,
+        int $limit,
+        string $orderBy = 'created_at',
+        string $orderDir = 'desc'
+    ) {
+        return  Operation::where('user_id', $userId)
+            ->orderBy($orderBy, $orderDir)
+            ->limit($limit);
     }
 }
