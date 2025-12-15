@@ -67,14 +67,4 @@ class EloquentOperationRepository implements OperationRepository
         return $query->paginate($per_page);
     }
 
-    private function getListQueryByUserId(
-        int $userId,
-        int $limit,
-        string $orderBy = 'created_at',
-        string $orderDir = 'desc'
-    ) {
-        return  Operation::where('user_id', $userId)
-            ->orderBy($orderBy, $orderDir)
-            ->limit($limit);
-    }
 }
